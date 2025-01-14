@@ -13,7 +13,7 @@ class Actor(nn.Module):
         self.fc_portfolio = nn.Linear(hidden_size + portfolio_dim, hidden_size)
         self.fc_selection = nn.Linear(hidden_size, num_stocks)  # Stock selection
         self.fc_allocation = nn.Linear(hidden_size, num_stocks)  # Cash allocation
-        self.sigmoid = nn.Sigmoid()
+        self.tanh = nn.Tanh()
         self.softmax = nn.Softmax(dim=1)
 
     def forward(self, state, chaotic_features, portfolio_state, hidden=None):
@@ -26,8 +26,8 @@ class Actor(nn.Module):
         portfolio_combined = torch.cat([lstm_out, portfolio_state], dim=1)
         fc_out = torch.relu(self.fc_portfolio(portfolio_combined))
 
-        # Stock selection (sigmoid for probabilities)
-        stock_selection = self.sigmoid(self.fc_selection(fc_out))
+        # Stock selection 
+        stock_selection = self.tanh(self.fc_selection(fc_out))
 
         # Cash allocation (softmax for proportions)
         allocation = self.softmax(self.fc_allocation(fc_out))
