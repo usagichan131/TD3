@@ -26,8 +26,9 @@ class StockEnv(gym.Env):
         self.reset()
         
         # Action space: [stock_selection (binary), cash_allocation (proportions)]
+        # [stock_action (-1 for sell, 0 for hold, 1 for buy), cash_allocation (proportions)]
         self.action_space = spaces.Box(
-            low=np.array([0] * num_stocks + [0] * num_stocks),
+            low=np.array([-1] * num_stocks + [0] * num_stocks),
             high=np.array([1] * num_stocks + [1] * num_stocks),
             dtype=np.float32,
         )
@@ -49,7 +50,7 @@ class StockEnv(gym.Env):
 
     def step(self, action):
         # Parse action
-        stock_selection = action[:self.num_stocks] > 0.5  # Binary decision (0 or 1)
+        stock_selection = action[:self.num_stocks] #> 0.5  
         cash_allocation = action[self.num_stocks:]  # Allocation proportions
         cash_allocation /= np.sum(cash_allocation)  # Normalize to ensure sum = 1
         
@@ -101,10 +102,13 @@ class StockEnv(gym.Env):
         # Execute trades
         total_trade_volume = 0
         for i in range(self.num_stocks):
-            if stock_selection[i]:
+            action = stock_selection[i]
+            allocation = cash_allocation[i]
+
+            if action > 0.5:
                 # Allocate cash to this stock
-                allocation = self.cash_balance * cash_allocation[i]
-                num_shares = allocation // current_prices[i]
+                trade_value = self.cash_balance * allocation
+                num_shares = trade_value // current_prices[i]
                 trade_volume = num_shares * current_prices[i]
                 
                 # Calculate costs
@@ -117,7 +121,20 @@ class StockEnv(gym.Env):
                 
                 # Accumulate trade volume
                 total_trade_volume += trade_volume
+
+            elif action < -0.5:
+                sell_value = self.shares_held[i] * current_prices[i]
+                trade_volume = sell_value
+                
+                # Calculate costs
+                transaction_costs += trade_volume * self.transaction_cost
+                taxes += trade_volume * self.tax_rate
+                
+                # Update portfolio
+                self.cash_balance += sell_value
+                self.shares_held[i] = 0  # Sell all for simplicity
         
+
         # Portfolio value after trades
         new_portfolio_value = (
             self.cash_balance + np.sum(self.shares_held * current_prices)

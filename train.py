@@ -31,7 +31,9 @@ chaotic_extractor = ChaoticFeatureExtractor()
 
 # TD3 Agent setup
 max_action = 1.0
-agent = TD3(state_dim, action_dim, max_action, 1.0, 0.0)
+agent = TD3(
+    state_dim, action_dim, max_action, 1.0, 0.0
+    )
 agent.exploration_phase = exploration_phase
 
 # Logging
