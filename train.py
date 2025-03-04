@@ -10,7 +10,6 @@ from OptiPhaseSpace import ChaoticFeatureExtractor
 data = 10  # Replace with real data
 
 
-
 # Training configuration
 num_stocks = 10  # Number of stocks
 initial_cash = 10_000

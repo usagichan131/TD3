@@ -90,13 +90,13 @@ class ChaoticFeatureExtractor:
 
 
     def extract_features(self, data):
-        N, T, F = data.shape # Need to double check after
+        T, N, F = data.shape 
         chaotic_features = []
 
         for stock_idx in range(N):
             stock_features = []
             for feature_idx in range(F):
-                time_series = data[stock_idx, :, feature_idx]  # Extract time-series for a single stock and feature
+                time_series = data[:, stock_idx, feature_idx]  # Extract time-series for a single stock and feature
                 
                 lyapunov_exponent = self.calculate_rolling_lyapunov(time_series,window_size=5,step=1)
                 peak_counts = self.peak_count(time_series,window_size=5,step=1)
