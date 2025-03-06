@@ -7,8 +7,7 @@ from TD3 import TD3
 from OptiPhaseSpace import ChaoticFeatureExtractor
 
 
-data = 10  # Replace with real data
-
+data = np.loadtxt("data.csv", delimiter=",")
 
 # Training configuration
 num_stocks = data.shape[1]
