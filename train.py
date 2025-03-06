@@ -11,8 +11,8 @@ data = 10  # Replace with real data
 
 
 # Training configuration
-num_stocks = 10  # Number of stocks
-initial_cash = 10_000
+num_stocks = data.shape[1]
+initial_cash = 100_000
 num_episodes = 500
 max_steps = 100
 batch_size = 64
@@ -27,12 +27,23 @@ action_dim = env.action_space.shape[0]
 
 # Chaotic Feature Extractor setup
 chaotic_extractor = ChaoticFeatureExtractor()
+chaotic_feature_dim = chaotic_extractor.output_dim
 
 # TD3 Agent setup
 max_action = 1.0
 agent = TD3(
-    state_dim, action_dim, max_action, 1.0, 0.0
-    )
+    state_dim=state_dim,
+    chaotic_feature_dim=chaotic_feature_dim,
+    portfolio_dim=env.num_stocks,
+    action_dim=action_dim,
+    hidden_size=256,
+    num_layers=2,
+    num_stocks=num_stocks,
+    max_action=1.0,
+    env_action_space_high=1.0,
+    env_action_space_low=0.0
+)
+
 agent.exploration_phase = exploration_phase
 
 # Logging

@@ -125,7 +125,7 @@ class TD3:
         self.total_it = 0
 
         # Chaotic noise parameters
-        self.chaotic_map_state = random.random()  # Initial state for the chaotic map
+        self.chaotic_map_state = np.random.rand()  # Initial state for the chaotic map
 
     def chaotic_noise(self):
         """Logistic map to generate chaotic noise."""

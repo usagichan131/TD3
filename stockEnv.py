@@ -7,7 +7,7 @@ class StockEnv(gym.Env):
         self,
         num_stocks,
         data,
-        initial_cash=10_000,
+        initial_cash=100_000,
         transaction_cost=0.001,
         tax_rate=0.001,
         penalty_weight=0.01,
@@ -21,6 +21,9 @@ class StockEnv(gym.Env):
         self.transaction_cost = transaction_cost
         self.tax_rate = tax_rate
         self.penalty_weight = penalty_weight
+
+        #Store historical portfolio values for MDD calculation
+        self.portfolio_history = []
         
         # Initialize portfolio state
         self.reset()
@@ -46,6 +49,8 @@ class StockEnv(gym.Env):
         self.portfolio_value = self.initial_cash
         self.shares_held = np.zeros(self.num_stocks, dtype=np.float32)
         self.current_step = 0
+        self.portfolio_history = [self.initial_cash]  # Track portfolio value history
+
         return self._get_observation()
 
     def step(self, action):
@@ -139,7 +144,9 @@ class StockEnv(gym.Env):
         new_portfolio_value = (
             self.cash_balance + np.sum(self.shares_held * current_prices)
         )
-        
+        self.portfolio_history.append(new_portfolio_value)  # Store portfolio value history
+        max_drawdown = self._calculate_max_drawdown()
+
         # Portfolio return
         portfolio_return = new_portfolio_value - old_portfolio_value
         
@@ -147,12 +154,27 @@ class StockEnv(gym.Env):
         # opportunity_cost = self.cash_balance * self.penalty_weight
         
         # Final reward
-        reward = portfolio_return - self.penalty_weight*(transaction_costs + taxes) #- opportunity_cost
+        reward = portfolio_return - self.penalty_weight*(transaction_costs + taxes +max_drawdown) #- opportunity_cost
         
         # Update portfolio value
         self.portfolio_value = new_portfolio_value
         
         return reward, transaction_costs, taxes #, opportunity_cost
+
+
+
+    def _calculate_max_drawdown(self):
+            """
+            Computes maximum drawdown from portfolio history.
+            """
+            if len(self.portfolio_history) < 2:
+                return 0  # No drawdown at the start
+
+            peak = np.maximum.accumulate(self.portfolio_history)
+            drawdown = (self.portfolio_history - peak) / peak
+            max_drawdown = np.min(drawdown)  # Max drawdown is the worst drop
+
+            return abs(max_drawdown) 
 
     def render(self, mode="human"):
         """
