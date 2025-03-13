@@ -107,5 +107,6 @@ class ChaoticFeatureExtractor:
             chaotic_features.append(np.array(stock_features))  # (F, T, C)
 
         chaotic_features = np.array(chaotic_features)  # (N, F, T, C)
+        self.output_dim = F * 3
         
         return chaotic_features.transpose(0, 2, 1, 3).reshape(N, T, -1)  # Final shape (N, T, F*C)
