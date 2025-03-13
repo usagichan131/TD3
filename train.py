@@ -7,9 +7,11 @@ from TD3 import TD3
 from OptiPhaseSpace import ChaoticFeatureExtractor
 
 
-data = np.loadtxt("data.csv", delimiter=",")
+data = np.load("data/full_data.npy")
+
 
 # Training configuration
+
 num_stocks = data.shape[1]
 initial_cash = 100_000
 num_episodes = 500
@@ -48,12 +50,15 @@ agent.exploration_phase = exploration_phase
 # Logging
 reward_history = []
 avg_reward_history = []
+critic_loss_history = []
 
 # Training loop
 for episode in range(num_episodes):
     state, portfolio_state = env.reset()
     chaotic_features = chaotic_extractor.extract_features(state)  # Extract chaotic features
     total_reward = 0
+    episode_critic_loss = []
+
 
     for step in range(max_steps):
         # Select action
@@ -76,7 +81,8 @@ for episode in range(num_episodes):
         )
 
         # Train the agent
-        agent.train(batch_size=batch_size, discount=discount, tau=tau)
+        critic_loss = agent.train(batch_size=batch_size, discount=discount, tau=tau)
+        episode_critic_loss.append(critic_loss)
 
         state = next_state
         chaotic_features = next_chaotic_features
@@ -89,8 +95,10 @@ for episode in range(num_episodes):
     reward_history.append(total_reward)
     avg_reward = np.mean(reward_history[-10:])  # Moving average over last 10 episodes
     avg_reward_history.append(avg_reward)
+    avg_critic_loss = np.mean(episode_critic_loss)
+    critic_loss_history.append(avg_critic_loss)
 
-    print(f"Episode {episode + 1}/{num_episodes}: Total Reward = {total_reward:.2f}, Avg Reward = {avg_reward:.2f}")
+    print(f"Episode {episode + 1}/{num_episodes}: Total Reward = {total_reward:.2f}, Avg Reward = {avg_reward:.2f}, Avg Critic Loss = {avg_critic_loss:.4f}")
 
 # Plot rewards
 plt.figure(figsize=(10, 5))
@@ -99,5 +107,13 @@ plt.plot(avg_reward_history, label="Average Reward")
 plt.xlabel("Episode")
 plt.ylabel("Reward")
 plt.title("TD3 Training Rewards")
+plt.legend()
+plt.show()
+
+plt.figure(figsize=(10, 5))
+plt.plot(critic_loss_history, label="Critic Loss")
+plt.xlabel("Episode")
+plt.ylabel("Loss")
+plt.title("TD3 Critic Loss Over Time")
 plt.legend()
 plt.show()

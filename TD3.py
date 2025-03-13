@@ -204,3 +204,4 @@ class TD3:
                 target_param.data.copy_(tau * param.data + (1 - tau) * target_param.data)
 
         self.total_it += 1
+        return critic_loss.item(), actor_loss.item()

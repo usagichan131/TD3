@@ -36,12 +36,13 @@ class StockEnv(gym.Env):
             dtype=np.float32,
         )
         
-        # Observation space: price data + ESG scores + indicators + chaotic features + portfolio state
+        # Observation space: price data  + indicators + chaotic features + portfolio state
         feature_dim = self.data.shape[1] - 1  # Exclude the timestamp column
         obs_dim = feature_dim + 2 + num_stocks  # Add cash, portfolio value, and shares held
         self.observation_space = spaces.Box(
             low=-np.inf, high=np.inf, shape=(obs_dim,), dtype=np.float32
         )
+
 
     def reset(self):
         # Reset portfolio state
@@ -77,8 +78,7 @@ class StockEnv(gym.Env):
         return next_observation, reward, done, {
             "transaction_costs": transaction_costs,
             "taxes": taxes,
-            # "opportunity_cost": opportunity_cost,
-        }
+                    }
 
     def _get_observation(self):
         # Get current prices and features
