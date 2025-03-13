@@ -9,7 +9,6 @@ from OptiPhaseSpace import ChaoticFeatureExtractor
 
 data = np.load("data/full_data.npy")
 
-
 # Training configuration
 
 num_stocks = data.shape[1]
@@ -28,6 +27,7 @@ action_dim = env.action_space.shape[0]
 
 # Chaotic Feature Extractor setup
 chaotic_extractor = ChaoticFeatureExtractor()
+all_chaotic_features = chaotic_extractor.extract_features(data)  # Extract chaotic features
 chaotic_feature_dim = chaotic_extractor.output_dim
 
 # TD3 Agent setup
@@ -55,13 +55,14 @@ critic_loss_history = []
 # Training loop
 for episode in range(num_episodes):
     state, portfolio_state = env.reset()
-    chaotic_features = chaotic_extractor.extract_features(state)  # Extract chaotic features
     total_reward = 0
     episode_critic_loss = []
 
 
     for step in range(max_steps):
         # Select action
+        chaotic_features = all_chaotic_features[:, step, :] # (N, F*C)
+        
         action = agent.select_action(
             state=state,
             chaotic_features=chaotic_features,
@@ -72,12 +73,11 @@ for episode in range(num_episodes):
         # Step in environment
         next_state, reward, done, info = env.step(action)
         next_portfolio_state = info["portfolio_state"]
-        next_chaotic_features = chaotic_extractor.extract_features(next_state)
         total_reward += reward
 
         # Add transition to replay buffer
         agent.replay_buffer.add(
-            (state, chaotic_features, portfolio_state, action, reward, next_state, next_chaotic_features, next_portfolio_state, done)
+            (state, chaotic_features, portfolio_state, action, reward, next_state, next_portfolio_state, done)
         )
 
         # Train the agent
@@ -85,7 +85,6 @@ for episode in range(num_episodes):
         episode_critic_loss.append(critic_loss)
 
         state = next_state
-        chaotic_features = next_chaotic_features
         portfolio_state = next_portfolio_state
 
         if done:
