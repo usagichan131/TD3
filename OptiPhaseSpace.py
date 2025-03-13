@@ -10,12 +10,18 @@ from scipy.spatial.distance import cdist
 
 
 class ChaoticFeatureExtractor:
-    def __init__(self, embedding_dim=5, time_delay=2): #Optimize this params later using autocorr or mutual info
+    def __init__(self, embedding_dim=2, time_delay=1): #Optimize this params later using autocorr or mutual info
         self.embedding_dim = embedding_dim
         self.time_delay = time_delay
+        self.output_dim = None
 
     def phase_space_reconstruction(self, data):
         num_points = len(data) - (self.embedding_dim - 1) * self.time_delay
+        if num_points <= 0:
+            raise ValueError(
+                f"Input time series length is too short for the given embedding_dim and time_delay. "
+                f"Data length: {len(data)}, Required length: {(self.embedding_dim - 1) * self.time_delay + 1}"
+            )
         phase_space = np.zeros((num_points, self.embedding_dim))
         for i in range(num_points):
             for j in range(self.embedding_dim):
@@ -35,7 +41,7 @@ class ChaoticFeatureExtractor:
             d_i = np.linalg.norm(phase_space[i] - phase_space[neighbors[i]])
             if d_i <= 0:
                 continue  # Avoid log(0) or invalid cases
-            for j in range(1, max_iter = 2):
+            for j in range(1, 3):
                 idx1 = i + j
                 idx2 = neighbors[i] + j
                 if idx1 >= len(phase_space) or idx2 >= len(phase_space):
@@ -92,21 +98,27 @@ class ChaoticFeatureExtractor:
     def extract_features(self, data):
         T, N, F = data.shape 
         chaotic_features = []
+        window_size = 7
 
         for stock_idx in range(N):
             stock_features = []
             for feature_idx in range(F):
                 time_series = data[:, stock_idx, feature_idx]  # Extract time-series for a single stock and feature
                 
-                lyapunov_exponent = self.calculate_rolling_lyapunov(time_series,window_size=5,step=1)
-                peak_counts = self.peak_count(time_series,window_size=5,step=1)
-                fractal_dimension = self.calculate_fractal_dimension_rolling(time_series,window_size=5,step=1)
+                lyapunov_exponent = self.calculate_rolling_lyapunov(time_series,window_size=window_size,step=1)
+                peak_counts = self.peak_count(time_series,window_size=window_size,step=1)
+                fractal_dimension = self.calculate_fractal_dimension_rolling(time_series,window_size=window_size,step=1)
+
+                padding_length = window_size - 1
+                lyapunov_exponent = np.pad(lyapunov_exponent, (padding_length, 0), mode='edge') # pad with first value.
+                peak_counts = np.pad(peak_counts, (padding_length, 0), mode='edge')
+                fractal_dimension = np.pad(fractal_dimension, (padding_length, 0), mode='edge')
 
                 stock_features.append(np.stack([lyapunov_exponent, peak_counts, fractal_dimension], axis=-1))
             
             chaotic_features.append(np.array(stock_features))  # (F, T, C)
 
         chaotic_features = np.array(chaotic_features)  # (N, F, T, C)
-        self.output_dim = F * 3
+        self.output_dim = F * chaotic_features.shape[-1]
         
         return chaotic_features.transpose(0, 2, 1, 3).reshape(N, T, -1)  # Final shape (N, T, F*C)

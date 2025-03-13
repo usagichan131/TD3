@@ -51,8 +51,11 @@ class StockEnv(gym.Env):
         self.shares_held = np.zeros(self.num_stocks, dtype=np.float32)
         self.current_step = 0
         self.portfolio_history = [self.initial_cash]  # Track portfolio value history
+        
+        observation = self._get_observation()
+        return observation, observation
 
-        return self._get_observation()
+       
 
     def step(self, action):
         # Parse action

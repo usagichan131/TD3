@@ -86,7 +86,7 @@ class ReplayBuffer:
 
     def sample(self, batch_size):
         batch = random.sample(self.buffer, batch_size)
-        states, chaotic_features, portfolio_states, actions, rewards, next_states, next_chaotic_features, next_portfolio_states, dones = zip(*batch)
+        states, chaotic_features, portfolio_states, actions, rewards, next_states, next_portfolio_states, dones = zip(*batch)
         return (
             torch.tensor(states, dtype=torch.float32),
             torch.tensor(chaotic_features, dtype=torch.float32),
@@ -94,7 +94,6 @@ class ReplayBuffer:
             torch.tensor(actions, dtype=torch.float32),
             torch.tensor(rewards, dtype=torch.float32).unsqueeze(1),
             torch.tensor(next_states, dtype=torch.float32),
-            torch.tensor(next_chaotic_features, dtype=torch.float32),
             torch.tensor(next_portfolio_states, dtype=torch.float32),
             torch.tensor(dones, dtype=torch.float32).unsqueeze(1),
         )
@@ -156,7 +155,7 @@ class TD3:
             return
 
         # Sample from the replay buffer
-        states, chaotic_features, portfolio_states, actions, rewards, next_states, next_chaotic_features, next_portfolio_states, dones = self.replay_buffer.sample(batch_size)
+        states, chaotic_features, portfolio_states, actions, rewards, next_states, next_portfolio_states, dones = self.replay_buffer.sample(batch_size)
 
         # Compute target Q-values
         with torch.no_grad():
@@ -165,12 +164,12 @@ class TD3:
             ).to(actions.device)
 
             # Generate next actions using the target actor
-            stock_selection, allocation, _ = self.actor_target(next_states, next_chaotic_features, next_portfolio_states)
+            stock_selection, allocation, _ = self.actor_target(next_states, next_portfolio_states)
             next_actions = torch.cat([stock_selection, allocation], dim=1) + noise
             next_actions = next_actions.clamp(self.env_action_space_low, self.env_action_space_high)
 
             # Compute target Q-values
-            target_q1, target_q2 = self.critic_target(next_states, next_chaotic_features, next_portfolio_states, next_actions)
+            target_q1, target_q2 = self.critic_target(next_states, next_portfolio_states, next_actions)
             target_q = rewards + discount * (1 - dones) * torch.min(target_q1, target_q2)
 
         # Get current Q estimates
