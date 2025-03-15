@@ -135,6 +135,7 @@ class TD3:
     def select_action(self, state, chaotic_features, portfolio_state, current_episode=0, hidden=None):
         """Select action with or without chaotic noise during exploration."""
         state = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
+        chaotic_features = chaotic_features.astype(np.float32)
         chaotic_features = torch.tensor(chaotic_features, dtype=torch.float32).unsqueeze(0)
         portfolio_state = torch.tensor(portfolio_state, dtype=torch.float32).unsqueeze(0)
         
