@@ -30,6 +30,8 @@ chaotic_extractor = ChaoticFeatureExtractor()
 all_chaotic_features = chaotic_extractor.extract_features(data)  # Extract chaotic features
 chaotic_feature_dim = chaotic_extractor.output_dim
 
+# Kalman filter setup
+
 # TD3 Agent setup
 max_action = 1.0
 agent = TD3(
