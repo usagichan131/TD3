@@ -7,24 +7,25 @@ import numpy as np
 
 
 class Actor(nn.Module):
-    def __init__(self, state_dim, chaotic_feature_dim, portfolio_dim, hidden_size, num_layers, num_stocks):
+    def __init__(self, state_dim, chaotic_feature_dim, hidden_size, num_layers, num_stocks):
         super(Actor, self).__init__()
         self.lstm = nn.LSTM(state_dim + chaotic_feature_dim, hidden_size, num_layers, batch_first=True)
-        self.fc_portfolio = nn.Linear(hidden_size + portfolio_dim, hidden_size)
+        self.fc_portfolio = nn.Linear(hidden_size, hidden_size)
         self.fc_selection = nn.Linear(hidden_size, num_stocks)  # Stock selection
         self.fc_allocation = nn.Linear(hidden_size, num_stocks)  # Cash allocation
         self.tanh = nn.Tanh()
         self.softmax = nn.Softmax(dim=1)
 
-    def forward(self, state, chaotic_features, portfolio_state, hidden=None):
+    def forward(self, state, chaotic_features, hidden=None):
         # Combine stock state and chaotic features
-        augmented_state = torch.cat([state, chaotic_features], dim=2)
+        augmented_state = torch.cat([state, chaotic_features], dim=1).unsqueeze(1)  
+        # print(augmented_state.shape)
         lstm_out, hidden = self.lstm(augmented_state, hidden)
-        lstm_out = lstm_out[:, -1, :]  # Take the last timestep
+        lstm_out = lstm_out[:, -1, :]  # Take the last timestep, 
 
-        # Combine LSTM output with portfolio state
-        portfolio_combined = torch.cat([lstm_out, portfolio_state], dim=1)
-        fc_out = torch.relu(self.fc_portfolio(portfolio_combined))
+        # # Combine LSTM output with portfolio state
+        # portfolio_combined = torch.cat([lstm_out, portfolio_state], dim=1)
+        fc_out = torch.relu(self.fc_portfolio(lstm_out))
 
         # Stock selection 
         stock_selection = self.tanh(self.fc_selection(fc_out))
@@ -40,23 +41,23 @@ class Actor(nn.Module):
 
 # Critic Network
 class Critic(nn.Module):
-    def __init__(self, state_dim, chaotic_feature_dim, portfolio_dim, action_dim, hidden_size, num_layers):
+    def __init__(self, state_dim, chaotic_feature_dim, action_dim, hidden_size, num_layers):
         super(Critic, self).__init__()
         self.lstm = nn.LSTM(state_dim + chaotic_feature_dim, hidden_size, num_layers, batch_first=True)
-        self.fc_concat = nn.Linear(hidden_size + portfolio_dim + action_dim, 256)
+        self.fc_concat = nn.Linear(hidden_size + action_dim, 256)
         self.fc_q1 = nn.Linear(256, 256)
         self.fc_q2 = nn.Linear(256, 256)
         self.fc_q1_out = nn.Linear(256, 1)
         self.fc_q2_out = nn.Linear(256, 1)
 
-    def forward(self, state, chaotic_features, portfolio_state, action, hidden=None):
+    def forward(self, state, chaotic_features, action, hidden=None):
         # Combine stock state and chaotic features
-        augmented_state = torch.cat([state, chaotic_features], dim=2)
+        augmented_state = torch.cat([state, chaotic_features], dim=1).unsqueeze(1)
         lstm_out, hidden = self.lstm(augmented_state, hidden)
         lstm_out = lstm_out[:, -1, :]  # Take the last timestep
 
         # Concatenate LSTM output, portfolio state, and action
-        combined = torch.cat([lstm_out, portfolio_state, action], dim=1)
+        combined = torch.cat([lstm_out, action], dim=1)
         concat_out = torch.relu(self.fc_concat(combined))
 
         # Q-value estimation
@@ -67,11 +68,11 @@ class Critic(nn.Module):
 
         return q1, q2
 
-    def Q1(self, state, chaotic_features, portfolio_state, action, hidden=None):
-        augmented_state = torch.cat([state, chaotic_features], dim=2)
+    def Q1(self, state, chaotic_features, action, hidden=None):
+        augmented_state = torch.cat([state, chaotic_features], dim=1).unsqueeze(1)
         lstm_out, hidden = self.lstm(augmented_state, hidden)
         lstm_out = lstm_out[:, -1, :]
-        combined = torch.cat([lstm_out, portfolio_state, action], dim=1)
+        combined = torch.cat([lstm_out, action], dim=1)
         concat_out = torch.relu(self.fc_concat(combined))
         q1 = torch.relu(self.fc_q1(concat_out))
         return self.fc_q1_out(q1)
@@ -86,27 +87,26 @@ class ReplayBuffer:
 
     def sample(self, batch_size):
         batch = random.sample(self.buffer, batch_size)
-        states, chaotic_features, portfolio_states, actions, rewards, next_states, next_portfolio_states, dones = zip(*batch)
+        states, chaotic_features, actions, rewards, next_states, next_chaotic_features, dones = zip(*batch)
         return (
-            torch.tensor(states, dtype=torch.float32),
-            torch.tensor(chaotic_features, dtype=torch.float32),
-            torch.tensor(portfolio_states, dtype=torch.float32),
-            torch.tensor(actions, dtype=torch.float32),
-            torch.tensor(rewards, dtype=torch.float32).unsqueeze(1),
-            torch.tensor(next_states, dtype=torch.float32),
-            torch.tensor(next_portfolio_states, dtype=torch.float32),
-            torch.tensor(dones, dtype=torch.float32).unsqueeze(1),
+            torch.tensor(np.array(states), dtype=torch.float32),
+            torch.tensor(np.stack([np.array(cf, dtype=np.float32) for cf in chaotic_features])),  
+            torch.tensor(np.array(actions), dtype=torch.float32),  
+            torch.tensor(np.array(rewards), dtype=torch.float32).unsqueeze(1),  
+            torch.tensor(np.array(next_states), dtype=torch.float32),  
+            torch.tensor(np.stack([np.array(cf, dtype=np.float32) for cf in next_chaotic_features])),
+            torch.tensor(np.array(dones), dtype=torch.float32).unsqueeze(1),
         )
 #TD3 algo
 class TD3:
-    def __init__(self, state_dim, chaotic_feature_dim, portfolio_dim, action_dim, hidden_size, num_layers, num_stocks, max_action, env_action_space_high, env_action_space_low):
+    def __init__(self, state_dim, chaotic_feature_dim, action_dim, hidden_size, num_layers, num_stocks, max_action, env_action_space_high, env_action_space_low):
         self.exploration_phase = 365  # Number of episodes for chaotic exploration
-        self.actor = Actor(state_dim, chaotic_feature_dim, portfolio_dim, hidden_size, num_layers, num_stocks)
-        self.actor_target = Actor(state_dim, chaotic_feature_dim, portfolio_dim, hidden_size, num_layers, num_stocks)
+        self.actor = Actor(state_dim, chaotic_feature_dim, hidden_size, num_layers, num_stocks)
+        self.actor_target = Actor(state_dim, chaotic_feature_dim, hidden_size, num_layers, num_stocks)
         self.actor_target.load_state_dict(self.actor.state_dict())
 
-        self.critic = Critic(state_dim, chaotic_feature_dim, portfolio_dim, action_dim, hidden_size, num_layers)
-        self.critic_target = Critic(state_dim, chaotic_feature_dim, portfolio_dim, action_dim, hidden_size, num_layers)
+        self.critic = Critic(state_dim, chaotic_feature_dim, action_dim, hidden_size, num_layers)
+        self.critic_target = Critic(state_dim, chaotic_feature_dim, action_dim, hidden_size, num_layers)
         self.critic_target.load_state_dict(self.critic.state_dict())
 
         self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=1e-3)
@@ -126,37 +126,47 @@ class TD3:
         # Chaotic noise parameters
         self.chaotic_map_state = np.random.rand()  # Initial state for the chaotic map
 
-    def chaotic_noise(self):
+    def chaotic_noise(self, scale=0.1):
         """Logistic map to generate chaotic noise."""
         r = 3.99  # Chaos parameter
         self.chaotic_map_state = r * self.chaotic_map_state * (1 - self.chaotic_map_state)
-        return self.chaotic_map_state
-
-    def select_action(self, state, chaotic_features, portfolio_state, current_episode=0, hidden=None):
+        return scale * (self.chaotic_map_state - 0.5)
+    
+    def select_action(self, state, chaotic_features, current_episode=0, hidden=None):
         """Select action with or without chaotic noise during exploration."""
         state = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
         chaotic_features = chaotic_features.astype(np.float32)
         chaotic_features = torch.tensor(chaotic_features, dtype=torch.float32).unsqueeze(0)
-        portfolio_state = torch.tensor(portfolio_state, dtype=torch.float32).unsqueeze(0)
         
         # Generate actions using the actor network
-        stock_selection, allocation, _ = self.actor(state, chaotic_features, portfolio_state, hidden)
+        stock_selection, allocation, _ = self.actor(state, chaotic_features, hidden)
         actions = torch.cat([stock_selection, allocation], dim=1).detach().numpy().flatten()
 
         # Add chaotic noise during exploration phase
         if current_episode < self.exploration_phase:
-            noise = np.array([self.chaotic_noise() for _ in range(actions.shape[0])])
-            actions += noise
+            # noise = np.array([self.chaotic_noise() for _ in range(actions.shape[0])])
+            # actions += noise
+
+            chaotic = np.array([self.chaotic_noise(scale=0.1) for _ in range(actions.shape[0])])
+            gaussian = np.random.normal(0, 0.1, size=actions.shape)
+            actions = np.clip(actions + chaotic + gaussian, self.env_action_space_low, self.env_action_space_high)
+        else:
+            # Decaying noise after exploration
+            decay_factor = np.exp(-(current_episode - self.exploration_phase) / 100)  # Decays slower
+            gaussian = np.random.normal(0, 0.05 * decay_factor, size=actions.shape)  # Smaller noise
+            actions += gaussian
+
 
         # Clip actions to valid range
         return np.clip(actions, self.env_action_space_low, self.env_action_space_high)
 
     def train(self, batch_size=100, discount=0.99, tau=0.005):
         if len(self.replay_buffer.buffer) < batch_size:
-            return
+            return 0.0, 0.0
 
         # Sample from the replay buffer
-        states, chaotic_features, portfolio_states, actions, rewards, next_states, next_portfolio_states, dones = self.replay_buffer.sample(batch_size)
+        states, chaotic_features, actions, rewards, next_states, next_chaotic_features, dones = self.replay_buffer.sample(batch_size)
+
 
         # Compute target Q-values
         with torch.no_grad():
@@ -165,16 +175,16 @@ class TD3:
             ).to(actions.device)
 
             # Generate next actions using the target actor
-            stock_selection, allocation, _ = self.actor_target(next_states, next_portfolio_states)
+            stock_selection, allocation, _ = self.actor_target(next_states, next_chaotic_features)
             next_actions = torch.cat([stock_selection, allocation], dim=1) + noise
             next_actions = next_actions.clamp(self.env_action_space_low, self.env_action_space_high)
 
             # Compute target Q-values
-            target_q1, target_q2 = self.critic_target(next_states, next_portfolio_states, next_actions)
+            target_q1, target_q2 = self.critic_target(next_states,next_chaotic_features, next_actions)
             target_q = rewards + discount * (1 - dones) * torch.min(target_q1, target_q2)
 
         # Get current Q estimates
-        current_q1, current_q2 = self.critic(states, chaotic_features, portfolio_states, actions)
+        current_q1, current_q2 = self.critic(states, chaotic_features, actions)
 
         # Compute critic loss
         critic_loss = torch.nn.functional.mse_loss(current_q1, target_q) + torch.nn.functional.mse_loss(current_q2, target_q)
@@ -184,17 +194,20 @@ class TD3:
         critic_loss.backward()
         self.critic_optimizer.step()
 
+        actor_loss = torch.tensor(0.0)
+
         # Delayed policy updates
         if self.total_it % self.policy_delay == 0:
             # Compute actor loss
-            stock_selection, allocation, _ = self.actor(states, chaotic_features, portfolio_states)
+            stock_selection, allocation, _ = self.actor(states, chaotic_features)
             actions = torch.cat([stock_selection, allocation], dim=1)
-            actor_loss = -self.critic.Q1(states, chaotic_features, portfolio_states, actions).mean()
+            actor_loss = -self.critic.Q1(states, chaotic_features, actions).mean()
 
             # Optimize actor
             self.actor_optimizer.zero_grad()
             actor_loss.backward()
             self.actor_optimizer.step()
+            
 
             # Update target networks
             for param, target_param in zip(self.critic.parameters(), self.critic_target.parameters()):

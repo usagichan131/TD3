@@ -10,7 +10,7 @@ class StockEnv(gym.Env):
         initial_cash=100_000,
         transaction_cost=0.001,
         tax_rate=0.001,
-        penalty_weight=0.01,
+        penalty_weight=0.001,
     ):
         super(StockEnv, self).__init__()
         
@@ -37,8 +37,8 @@ class StockEnv(gym.Env):
         )
         
         # Observation space: price data  + indicators + chaotic features + portfolio state
-        feature_dim = self.data.shape[1] - 1  # Exclude the timestamp column
-        obs_dim = feature_dim + 2 + num_stocks  # Add cash, portfolio value, and shares held
+        feature_dim = self.data.shape[-1]  # Exclude the timestamp column
+        obs_dim = feature_dim * num_stocks + 2 + num_stocks  # Add cash, portfolio value, and shares held
         self.observation_space = spaces.Box(
             low=-np.inf, high=np.inf, shape=(obs_dim,), dtype=np.float32
         )
@@ -53,7 +53,7 @@ class StockEnv(gym.Env):
         self.portfolio_history = [self.initial_cash]  # Track portfolio value history
         
         observation = self._get_observation()
-        return observation, observation
+        return observation
 
        
 
