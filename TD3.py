@@ -146,16 +146,9 @@ class TD3:
         if current_episode < self.exploration_phase:
             # noise = np.array([self.chaotic_noise() for _ in range(actions.shape[0])])
             # actions += noise
-
             chaotic = np.array([self.chaotic_noise(scale=0.1) for _ in range(actions.shape[0])])
-            gaussian = np.random.normal(0, 0.1, size=actions.shape)
-            actions = np.clip(actions + chaotic + gaussian, self.env_action_space_low, self.env_action_space_high)
-        else:
-            # Decaying noise after exploration
-            decay_factor = np.exp(-(current_episode - self.exploration_phase) / 100)  # Decays slower
-            gaussian = np.random.normal(0, 0.05 * decay_factor, size=actions.shape)  # Smaller noise
-            actions += gaussian
-
+            gaussian_noise = np.random.normal(0, 0.1, size=actions.shape)  # More variance
+            actions = np.clip(actions + chaotic + gaussian_noise, self.env_action_space_low, self.env_action_space_high)
 
         # Clip actions to valid range
         return np.clip(actions, self.env_action_space_low, self.env_action_space_high)
@@ -170,9 +163,8 @@ class TD3:
 
         # Compute target Q-values
         with torch.no_grad():
-            noise = torch.clamp(
-                torch.normal(0, self.policy_noise, size=actions.shape), -self.noise_clip, self.noise_clip
-            ).to(actions.device)
+            noise = torch.randn_like(actions) * self.policy_noise
+            noise = torch.clamp(noise, -self.noise_clip, self.noise_clip)
 
             # Generate next actions using the target actor
             stock_selection, allocation, _ = self.actor_target(next_states, next_chaotic_features)
@@ -181,13 +173,22 @@ class TD3:
 
             # Compute target Q-values
             target_q1, target_q2 = self.critic_target(next_states,next_chaotic_features, next_actions)
+
+            print(f"Target Q1: {target_q1}, Target Q2: {target_q2}")
+            print(f"Rewards: {rewards}, Discount: {discount}, Dones: {dones}")
+
             target_q = rewards + discount * (1 - dones) * torch.min(target_q1, target_q2)
+
+            if torch.isnan(target_q).any():
+                print("Warning: NaN detected in target_q!")
 
         # Get current Q estimates
         current_q1, current_q2 = self.critic(states, chaotic_features, actions)
 
         # Compute critic loss
         critic_loss = torch.nn.functional.mse_loss(current_q1, target_q) + torch.nn.functional.mse_loss(current_q2, target_q)
+        torch.nn.utils.clip_grad_norm_(self.critic.parameters(), max_norm=1.0)
+
 
         # Optimize critic
         self.critic_optimizer.zero_grad()

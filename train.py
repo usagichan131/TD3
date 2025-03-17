@@ -18,7 +18,7 @@ max_steps = data.shape[0]
 batch_size = 64
 discount = 0.99
 tau = 0.005
-exploration_phase = 503
+exploration_phase = 700
 
 # Chaotic Feature Extractor setup
 chaotic_extractor = ChaoticFeatureExtractor()
@@ -71,6 +71,8 @@ for episode in range(num_episodes):
             current_episode=episode
         )
 
+        print(f"Actions at episode {step}: {action}")
+
         # Step in environment
         next_state, reward, done, info = env.step(action)
         total_reward += reward
@@ -88,6 +90,8 @@ for episode in range(num_episodes):
         state = next_state
 
         if done:
+            print(f"🚨 Episode {episode} ended early at step {step} due to termination condition.")
+
             break
 
     # Logging

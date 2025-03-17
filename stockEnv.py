@@ -61,7 +61,21 @@ class StockEnv(gym.Env):
         # Parse action
         stock_selection = action[:self.num_stocks] #> 0.5  
         cash_allocation = action[self.num_stocks:]  # Allocation proportions
-        cash_allocation /= np.sum(cash_allocation)  # Normalize to ensure sum = 1
+
+        print(f"Raw stock selection: {stock_selection}")  # Debugging
+
+
+        # Apply thresholds (Buy if > 0.5, Sell if < -0.5, Hold otherwise)
+        stock_selection = np.where(stock_selection > 0.5, 1, 0)  # Buy if > 0.5
+        stock_selection = np.where(stock_selection < -0.5, -1, stock_selection)  # Sell if < -0.5 
+
+        print(f"Processed stock selection (1=Buy, -1=Sell, 0=Hold): {stock_selection}")
+
+        # Normalize cash allocation (avoid division by zero)
+        if np.sum(cash_allocation) > 0:
+            cash_allocation /= np.sum(cash_allocation)
+        else:
+            cash_allocation = np.zeros_like(cash_allocation)
         
         # Get current prices
         current_prices = self.data[self.current_step, :, 0]
@@ -70,10 +84,26 @@ class StockEnv(gym.Env):
         reward, transaction_costs, taxes = self._execute_trade(
             current_prices, stock_selection, cash_allocation
         )
+
+        print(f"Reward for this step: {reward}")
+
         
         # Update timestep and check if done
         self.current_step += 1
-        done = self.current_step >= len(self.data) - 1 or self.portfolio_value <= 0
+
+        # Calculate performance indicators
+        drawdown = self._calculate_max_drawdown()  # Get max drawdown
+        consecutive_losses = self._count_consecutive_losses()  # New function
+
+        # Define termination conditions
+        bad_performance = (
+            self.portfolio_value < self.initial_cash * 0.7 or  # Portfolio down 30%
+            consecutive_losses >= 5 or  # 5 consecutive losing steps
+            drawdown > 0.5  # More than 50% max drawdown 
+            or reward < 0
+        )
+
+        done = self.current_step >= len(self.data) - 1 or self.portfolio_value <= 0 or bad_performance
         
         # Get next observation
         next_observation = self._get_observation()
@@ -113,7 +143,7 @@ class StockEnv(gym.Env):
             action = stock_selection[i]
             allocation = cash_allocation[i]
 
-            if action > 0.5:
+            if action ==1:
                 # Allocate cash to this stock
                 trade_value = self.cash_balance * allocation
                 num_shares = trade_value // current_prices[i]
@@ -130,7 +160,7 @@ class StockEnv(gym.Env):
                 # Accumulate trade volume
                 total_trade_volume += trade_volume
 
-            elif action < -0.5:
+            elif action == -1:
                 sell_value = self.shares_held[i] * current_prices[i]
                 trade_volume = sell_value
                 
@@ -147,17 +177,21 @@ class StockEnv(gym.Env):
         new_portfolio_value = (
             self.cash_balance + np.sum(self.shares_held * current_prices)
         )
+
         self.portfolio_history.append(new_portfolio_value)  # Store portfolio value history
         max_drawdown = self._calculate_max_drawdown()
 
         # Portfolio return
         portfolio_return = new_portfolio_value - old_portfolio_value
         
-        # # Opportunity cost for unallocated cash
-        # opportunity_cost = self.cash_balance * self.penalty_weight
+
+        print(f"Shares before: {self.shares_held}")
+        print(f"Portfolio value before: {old_portfolio_value}")
+        print(f"Portfolio value after: {new_portfolio_value}")    
         
         # Final reward
         reward = portfolio_return - self.penalty_weight*(transaction_costs + taxes +max_drawdown) #- opportunity_cost
+
         
         # Update portfolio value
         self.portfolio_value = new_portfolio_value
@@ -177,7 +211,15 @@ class StockEnv(gym.Env):
             drawdown = (self.portfolio_history - peak) / peak
             max_drawdown = np.min(drawdown)  # Max drawdown is the worst drop
 
-            return abs(max_drawdown) 
+            return abs(max_drawdown)
+    
+    def _count_consecutive_losses(self):
+        """Counts how many consecutive steps have negative portfolio returns."""
+        if len(self.portfolio_history) < 6:
+            return 0  # Not enough history to check
+        
+        recent_returns = np.diff(self.portfolio_history[-6:])  # Get last 5 returns
+        return np.sum(recent_returns < 0)   
 
     def render(self, mode="human"):
         """
