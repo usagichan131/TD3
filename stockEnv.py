@@ -65,11 +65,11 @@ class StockEnv(gym.Env):
         print(f"Raw stock selection: {stock_selection}")  # Debugging
 
 
-        # Apply thresholds (Buy if > 0.5, Sell if < -0.5, Hold otherwise)
+        # Apply thresholds (Buy if > 0.5, Sell if < 0.5, Hold otherwise)
         stock_selection = np.where(stock_selection > 0.5, 1, 0)  # Buy if > 0.5
-        stock_selection = np.where(stock_selection < -0.5, -1, stock_selection)  # Sell if < -0.5 
+        stock_selection = np.where(stock_selection < 0.5, -1, stock_selection)  # Sell or hold if < 0.5
 
-        print(f"Processed stock selection (1=Buy, -1=Sell, 0=Hold): {stock_selection}")
+        print(f"Processed stock selection (1=Buy, -1=Sell or Hold): {stock_selection}")
 
         # Normalize cash allocation (avoid division by zero)
         if np.sum(cash_allocation) > 0:
@@ -144,6 +144,8 @@ class StockEnv(gym.Env):
             allocation = cash_allocation[i]
 
             if action ==1:
+                if self.cash_balance < current_prices[i]:
+                    continue
                 # Allocate cash to this stock
                 trade_value = self.cash_balance * allocation
                 num_shares = trade_value // current_prices[i]
@@ -161,6 +163,8 @@ class StockEnv(gym.Env):
                 total_trade_volume += trade_volume
 
             elif action == -1:
+                if self.shares_held[i] == 0:
+                    continue
                 sell_value = self.shares_held[i] * current_prices[i]
                 trade_volume = sell_value
                 
