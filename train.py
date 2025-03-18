@@ -71,7 +71,7 @@ for episode in range(num_episodes):
             current_episode=episode
         )
 
-        print(f"Actions at episode {step}: {action}")
+        print(f"Actions at step {step}: {action}")
 
         # Step in environment
         next_state, reward, done, info = env.step(action)
