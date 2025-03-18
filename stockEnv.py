@@ -59,7 +59,7 @@ class StockEnv(gym.Env):
 
     def step(self, action):
         # Parse action
-        stock_selection = action[:self.num_stocks] #> 0.5  
+        stock_selection = action[:self.num_stocks] #  
         cash_allocation = action[self.num_stocks:]  # Allocation proportions
 
         print(f"Raw stock selection: {stock_selection}")  # Debugging
@@ -70,12 +70,6 @@ class StockEnv(gym.Env):
         stock_selection = np.where(stock_selection < 0.5, -1, stock_selection)  # Sell or hold if < 0.5
 
         print(f"Processed stock selection (1=Buy, -1=Sell or Hold): {stock_selection}")
-
-        # Normalize cash allocation (avoid division by zero)
-        if np.sum(cash_allocation) > 0:
-            cash_allocation /= np.sum(cash_allocation)
-        else:
-            cash_allocation = np.zeros_like(cash_allocation)
         
         # Get current prices
         current_prices = self.data[self.current_step, :, 0]
