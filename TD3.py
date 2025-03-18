@@ -109,10 +109,10 @@ class TD3:
         self.critic_target = Critic(state_dim, chaotic_feature_dim, action_dim, hidden_size, num_layers)
         self.critic_target.load_state_dict(self.critic.state_dict())
 
-        self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=1e-3)
-        self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=1e-3)
+        self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=1e-4)
+        self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=1e-4)
 
-        self.replay_buffer = ReplayBuffer(size=1000000)
+        self.replay_buffer = ReplayBuffer(size=200000)
 
         self.max_action = max_action
         self.env_action_space_high = env_action_space_high
@@ -120,7 +120,7 @@ class TD3:
 
         self.policy_noise = 0.2  # Noise standard deviation
         self.noise_clip = 0.5  # Noise clipping
-        self.policy_delay = 2  # Delayed policy updates
+        self.policy_delay = 3  # Delayed policy updates
         self.total_it = 0
 
         # Chaotic noise parameters
@@ -153,7 +153,7 @@ class TD3:
         # Clip actions to valid range
         return np.clip(actions, self.env_action_space_low, self.env_action_space_high)
 
-    def train(self, batch_size=100, discount=0.99, tau=0.005):
+    def train(self, batch_size=100, discount=0.95, tau=1e-3):
         if len(self.replay_buffer.buffer) < batch_size:
             return 0.0, 0.0
 
