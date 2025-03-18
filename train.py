@@ -13,7 +13,7 @@ data = np.load("data/full_data.npy")
 
 num_stocks = data.shape[1]
 initial_cash = 100_000
-num_episodes = 80
+num_episodes = 1000
 max_steps = data.shape[0]
 batch_size = 64
 discount = 0.95
