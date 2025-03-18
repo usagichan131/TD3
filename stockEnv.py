@@ -94,7 +94,7 @@ class StockEnv(gym.Env):
             self.portfolio_value < self.initial_cash * 0.7 or  # Portfolio down 30%
             consecutive_losses >= 5 or  # 5 consecutive losing steps
             drawdown > 0.5  # More than 50% max drawdown 
-            or reward < 0
+            or reward < -1.5
         )
 
         done = self.current_step >= len(self.data) - 1 or self.portfolio_value <= 0 or bad_performance
@@ -183,13 +183,13 @@ class StockEnv(gym.Env):
         portfolio_return = new_portfolio_value - old_portfolio_value
         
 
-        print(f"Shares before: {self.shares_held}")
+        print(f"Shares held: {self.shares_held}")
         print(f"Portfolio value before: {old_portfolio_value}")
         print(f"Portfolio value after: {new_portfolio_value}")    
         
         # Final reward
         reward = portfolio_return - self.penalty_weight*(transaction_costs + taxes +max_drawdown) #- opportunity_cost
-
+        reward /= 1000 # Normalize reward 
         
         # Update portfolio value
         self.portfolio_value = new_portfolio_value
