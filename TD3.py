@@ -100,7 +100,7 @@ class ReplayBuffer:
 #TD3 algo
 class TD3:
     def __init__(self, state_dim, chaotic_feature_dim, action_dim, hidden_size, num_layers, num_stocks, max_action, env_action_space_high, env_action_space_low):
-        self.exploration_phase = 365  # Number of episodes for chaotic exploration
+        self.exploration_phase = 700  # Number of episodes for chaotic exploration
         self.actor = Actor(state_dim, chaotic_feature_dim, hidden_size, num_layers, num_stocks)
         self.actor_target = Actor(state_dim, chaotic_feature_dim, hidden_size, num_layers, num_stocks)
         self.actor_target.load_state_dict(self.actor.state_dict())
@@ -109,10 +109,10 @@ class TD3:
         self.critic_target = Critic(state_dim, chaotic_feature_dim, action_dim, hidden_size, num_layers)
         self.critic_target.load_state_dict(self.critic.state_dict())
 
-        self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=1e-4)
+        self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=1e-5)
         self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=1e-4)
 
-        self.replay_buffer = ReplayBuffer(size=200000)
+        self.replay_buffer = ReplayBuffer(size=100000)
 
         self.max_action = max_action
         self.env_action_space_high = env_action_space_high
@@ -153,7 +153,7 @@ class TD3:
         # Clip actions to valid range
         return np.clip(actions, self.env_action_space_low, self.env_action_space_high)
 
-    def train(self, batch_size=100, discount=0.95, tau=1e-3):
+    def train(self, batch_size=64, discount=0.99, tau=1e-3):
         if len(self.replay_buffer.buffer) < batch_size:
             return 0.0, 0.0
 
