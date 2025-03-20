@@ -126,7 +126,7 @@ class TD3:
         # Chaotic noise parameters
         self.chaotic_map_state = np.random.rand()  # Initial state for the chaotic map
 
-    def chaotic_noise(self, scale=0.005):
+    def chaotic_noise(self, scale=0.01):
         """Logistic map to generate chaotic noise."""
         r = 3.99  # Chaos parameter
         self.chaotic_map_state = r * self.chaotic_map_state * (1 - self.chaotic_map_state)
@@ -146,7 +146,7 @@ class TD3:
         if current_episode < self.exploration_phase:
             # noise = np.array([self.chaotic_noise() for _ in range(actions.shape[0])])
             # actions += noise
-            chaotic = np.array([self.chaotic_noise(scale=0.005) for _ in range(actions.shape[0])])
+            chaotic = np.array([self.chaotic_noise(scale=0.01) for _ in range(actions.shape[0])])
             gaussian_noise = np.random.normal(0, 0.1, size=actions.shape)  # More variance
             actions = np.clip(actions + chaotic + gaussian_noise, self.env_action_space_low, self.env_action_space_high)
 
@@ -174,8 +174,8 @@ class TD3:
             # Compute target Q-values
             target_q1, target_q2 = self.critic_target(next_states,next_chaotic_features, next_actions)
 
-            print(f"Target Q1: {target_q1}, Target Q2: {target_q2}")
-            print(f"Rewards: {rewards}, Discount: {discount}, Dones: {dones}")
+            # print(f"Target Q1: {target_q1}, Target Q2: {target_q2}")
+            # print(f"Rewards: {rewards}, Discount: {discount}, Dones: {dones}")
 
             target_q = rewards + discount * (1 - dones) * torch.min(target_q1, target_q2)
 
