@@ -62,14 +62,14 @@ class StockEnv(gym.Env):
         stock_selection = action[:self.num_stocks] #  
         cash_allocation = action[self.num_stocks:]  # Allocation proportions
 
-        print(f"Raw stock selection: {stock_selection}")  # Debugging
+        # print(f"Raw stock selection: {stock_selection}")  # Debugging
 
 
         # Apply thresholds (Buy if > 0.5, Sell if < 0.5, Hold otherwise)
         stock_selection = np.where(stock_selection > 0.5, 1, 0)  # Buy if > 0.5
         stock_selection = np.where(stock_selection < 0.5, -1, stock_selection)  # Sell or hold if < 0.5
 
-        print(f"Processed stock selection (1=Buy, -1=Sell or Hold): {stock_selection}")
+        # print(f"Processed stock selection (1=Buy, -1=Sell or Hold): {stock_selection}")
         
         # Get current prices
         current_prices = self.data[self.current_step, :, 0]
@@ -79,7 +79,7 @@ class StockEnv(gym.Env):
             current_prices, stock_selection, cash_allocation
         )
 
-        print(f"Reward for this step: {reward}")
+        # print(f"Reward for this step: {reward}")
 
         
         # Update timestep and check if done
@@ -183,9 +183,9 @@ class StockEnv(gym.Env):
         portfolio_return = new_portfolio_value - old_portfolio_value
         
 
-        print(f"Shares held: {self.shares_held}")
-        print(f"Portfolio value before: {old_portfolio_value}")
-        print(f"Portfolio value after: {new_portfolio_value}")    
+        # print(f"Shares held: {self.shares_held}")
+        # print(f"Portfolio value before: {old_portfolio_value}")
+        # print(f"Portfolio value after: {new_portfolio_value}")    
         
         # Final reward
         reward = portfolio_return - self.penalty_weight*(transaction_costs + taxes +max_drawdown) #- opportunity_cost
@@ -227,3 +227,7 @@ class StockEnv(gym.Env):
         print(f"Cash Balance: {self.cash_balance:.2f}")
         print(f"Portfolio Value: {self.portfolio_value:.2f}")
         print(f"Shares Held: {self.shares_held}")
+
+
+
+

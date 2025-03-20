@@ -13,7 +13,7 @@ data = np.load("data/full_data.npy")
 
 num_stocks = data.shape[1]
 initial_cash = 100_000
-num_episodes = 1200
+num_episodes = 1300
 max_steps = data.shape[0]
 batch_size = 64
 discount = 0.99
@@ -71,7 +71,7 @@ for episode in range(num_episodes):
             current_episode=episode
         )
 
-        print(f"Actions at step {step}: {action}")
+        # print(f"Actions at step {step}: {action}")
 
         # Step in environment
         next_state, reward, done, info = env.step(action)
@@ -112,6 +112,8 @@ plt.ylabel("Reward")
 plt.title("TD3 Training Rewards")
 plt.legend()
 plt.show()
+
+torch.save(agent, 'td3_agent.pth')
 
 plt.figure(figsize=(10, 5))
 plt.plot(critic_loss_history, label="Critic Loss")
