@@ -94,7 +94,7 @@ class StockEnv(gym.Env):
             self.portfolio_value < self.initial_cash * 0.7 or  # Portfolio down 30%
             consecutive_losses >= 5 or  # 5 consecutive losing steps
             drawdown > 0.5  # More than 50% max drawdown 
-            or reward < -1.5
+            or reward < -3
         )
 
         done = self.current_step >= len(self.data) - 1 or self.portfolio_value <= 0 or bad_performance
