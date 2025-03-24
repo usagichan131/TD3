@@ -184,7 +184,7 @@ if __name__ == "__main__":
     
     # Run the optimization
     best_params = run_optimization(
-        n_trials=30,  # Adjust based on your compute resources and time constraints
+        n_trials=50,  # Adjust based on your compute resources and time constraints
         storage=storage
     )
     
