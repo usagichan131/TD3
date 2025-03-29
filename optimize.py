@@ -150,7 +150,7 @@ def run_optimization(n_trials=50, study_name=None, storage=None, load_if_exists=
     os.makedirs(results_dir, exist_ok=True)
     
     # Save best parameters
-    best_params_file = os.path.join(results_dir, f"{study_name}_best_params.json")
+    best_params_file = os.path.join(results_dir, "best_params.json")
     with open(best_params_file, 'w') as f:
         json.dump(trial.params, f, indent=2)
     
