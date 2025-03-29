@@ -188,7 +188,7 @@ class StockEnv(gym.Env):
         print(f"Portfolio value after: {new_portfolio_value}")    
         
         # Final reward
-        reward = portfolio_return - self.penalty_weight*(transaction_costs + taxes) -0.5*max_drawdown #- opportunity_cost
+        reward = portfolio_return - self.penalty_weight*(transaction_costs + taxes+max_drawdown) #- opportunity_cost
         reward /= 1000 # Normalize reward 
         
         # Update portfolio value
