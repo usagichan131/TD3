@@ -12,7 +12,7 @@ from kalmanfilter import apply_kalman_filter
 
 def objective(trial):
     # Load data
-    data = np.load("data/full_data_ver2.npy")
+    data = np.load("data/full_data_ver5_4stocks.npy")
     
     # Hyperparameters to optimize
     hidden_size = trial.suggest_int("hidden_size", 64, 512, log=True)
