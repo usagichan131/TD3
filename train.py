@@ -17,7 +17,7 @@ with open("best_params.json", "r") as f:
 num_episodes = 1300
 
 # Load data
-data = np.load("data/full_data.npy")
+data = np.load("data/full_data_ver5_4stocks.npy")
 num_stocks = data.shape[1]
 initial_cash = 100_000
 max_steps = data.shape[0]
