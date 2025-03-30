@@ -13,7 +13,7 @@ with open("best_params.json", "r") as f:
 
 # Load trained agent
 agent = torch.load('td3_agent.pth')
-agent.eval()  # Set to evaluation mode
+#agent.eval()  # Set to evaluation mode
 agent.exploration_phase = 0
 
 # Load test data
