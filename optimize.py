@@ -304,7 +304,7 @@ def train_with_best_params(best_params):
     plt.legend()
     plt.show()
 
-if _name_ == "_main_":
+if __name__ == "_main_":
     storage = None
     
     # Run the optimization
