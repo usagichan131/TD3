@@ -13,12 +13,14 @@ data = np.load("data/full_data.npy")
 
 num_stocks = data.shape[1]
 initial_cash = 100_000
-num_episodes = 1300
+num_episodes = 1000
 max_steps = data.shape[0]
 batch_size = 64
 discount = 0.99
 tau = 1e-3
-exploration_phase = 700
+exploration_phase = 600
+lookback_window = 5  # Define the lookback window
+
 
 # Chaotic Feature Extractor setup
 chaotic_extractor = ChaoticFeatureExtractor()
@@ -36,8 +38,8 @@ action_dim = env.action_space.shape[0]
 # TD3 Agent setup
 max_action = 1.0
 agent = TD3(
-    state_dim=state_dim,
-    chaotic_feature_dim=chaotic_feature_dim,
+    state_dim=num_stocks * (data.shape[-1]),  # Size of features per timestep
+    chaotic_feature_dim=chaotic_feature_dim, # Size of chaotic features per timestep
     action_dim=action_dim,
     hidden_size=256,
     num_layers=2,
@@ -61,26 +63,32 @@ for episode in range(num_episodes):
     episode_critic_loss = []
 
 
-    for step in range(max_steps):
+    for step in range(max_steps - lookback_window + 1): # Adjust step range
         # Select action
-        chaotic_features = all_chaotic_features[:, step, :].flatten() # (N*F*C)
-        
+        start_index = max(0, step)
+        end_index = step + lookback_window
+        current_state_sequence = state[:num_stocks * lookback_window * (data.shape[-1])].reshape(lookback_window, num_stocks * (data.shape[-1])) # Extract price/indicator features
+        portfolio_state = state[num_stocks * lookback_window * (data.shape[-1]):] # Extract portfolio state
+
+        chaotic_features_sequence = all_chaotic_features[:, step:step + lookback_window, :].reshape(lookback_window, -1) # Get sequence of chaotic features
+
         action = agent.select_action(
-            state=state,
-            chaotic_features=chaotic_features,
+            state=current_state_sequence, # Pass the sequence
+            chaotic_features=chaotic_features_sequence, # Pass the sequence
             current_episode=episode
         )
-
-        # print(f"Actions at step {step}: {action}")
 
         # Step in environment
         next_state, reward, done, info = env.step(action)
         total_reward += reward
-        next_chaotic_features = all_chaotic_features[:, step + 1, :].flatten() if step + 1 < max_steps else chaotic_features  # Handle last step case
+
+        # Extract next state sequence (handle end of episode)
+        next_state_sequence = next_state[:num_stocks * lookback_window * (data.shape[-1])].reshape(lookback_window, num_stocks * (data.shape[-1]))
+        next_chaotic_features_sequence = all_chaotic_features[:, step + 1:step + lookback_window + 1, :].reshape(lookback_window, -1) if step + 1 < max_steps - lookback_window + 1 else chaotic_features_sequence # Handle last step
 
         # Add transition to replay buffer
         agent.replay_buffer.add(
-            (state, chaotic_features, action, reward, next_state,next_chaotic_features, done)
+            (current_state_sequence, chaotic_features_sequence, action, reward, next_state_sequence, next_chaotic_features_sequence, done)
         )
 
         # Train the agent
@@ -90,8 +98,7 @@ for episode in range(num_episodes):
         state = next_state
 
         if done:
-            print(f"🚨 Episode {episode} ended early at step {step} due to termination condition.")
-
+            print(f"🚨 Episode {episode} ended early at step {step + lookback_window} due to termination condition.")
             break
 
     # Logging
@@ -113,7 +120,7 @@ plt.title("TD3 Training Rewards")
 plt.legend()
 plt.show()
 
-torch.save(agent, 'td3_agent.pth')
+torch.save(agent, 'td3_agent_sequence.pth')
 
 plt.figure(figsize=(10, 5))
 plt.plot(critic_loss_history, label="Critic Loss")

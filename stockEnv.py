@@ -7,6 +7,7 @@ class StockEnv(gym.Env):
         self,
         num_stocks,
         data,
+        lookback_window=5,  # Number of past days to include
         initial_cash=100_000,
         transaction_cost=0.001,
         tax_rate=0.001,
@@ -17,6 +18,7 @@ class StockEnv(gym.Env):
         # Initialization parameters
         self.num_stocks = num_stocks
         self.data = data
+        self.lookback_window = lookback_window
         self.initial_cash = initial_cash
         self.transaction_cost = transaction_cost
         self.tax_rate = tax_rate
@@ -108,11 +110,17 @@ class StockEnv(gym.Env):
                     }
 
     def _get_observation(self):
-        # Get current prices and features
-        features = self.data[self.current_step, :, :]
+        start_index = max(0, self.current_step - self.lookback_window + 1)
+        end_index = self.current_step + 1
+        historical_data = self.data[start_index:end_index, :, :]
 
-        features_flat = features.flatten()
-        
+        # Pad with the earliest data if not enough history yet
+        if len(historical_data) < self.lookback_window:
+            padding = np.tile(historical_data[0], (self.lookback_window - len(historical_data), 1, 1))
+            historical_data = np.concatenate([padding, historical_data], axis=0)
+
+        features_flat = historical_data.flatten()
+
         # Construct observation: features + portfolio state
         obs = np.concatenate(
             [features_flat, [self.cash_balance, self.portfolio_value], self.shares_held]
@@ -189,7 +197,7 @@ class StockEnv(gym.Env):
         
         # Final reward
         reward = portfolio_return - self.penalty_weight*(transaction_costs + taxes +max_drawdown) #- opportunity_cost
-        reward /= 1000 # Normalize reward 
+        reward /= 1000 # Normalize reward (%)
         
         # Update portfolio value
         self.portfolio_value = new_portfolio_value
