@@ -7,7 +7,8 @@ from TD3 import TD3
 from OptiPhaseSpace import ChaoticFeatureExtractor
 from kalmanfilter import apply_kalman_filter
 
-data = np.load("data/test_data.npy")
+data = np.load("data/test_processed_data.npy")
+data = data[:95]  # Limit to the first 1000 timesteps for testing
 
 # Load the trained agent
 agent = torch.load('td3_agent_sequence.pth')  
@@ -30,7 +31,7 @@ data = apply_kalman_filter(data, observation_covariance=1.0, transition_covarian
 test_env = StockEnv(num_stocks=num_stocks, data=data, initial_cash=100_000)
 
 # Testing configuration
-num_test_episodes = 10
+num_test_episodes = 2
 max_steps = data.shape[0]
 
 # Log the test performance

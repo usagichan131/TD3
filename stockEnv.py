@@ -74,7 +74,7 @@ class StockEnv(gym.Env):
         # print(f"Processed stock selection (1=Buy, -1=Sell or Hold): {stock_selection}")
         
         # Get current prices
-        current_prices = self.data[self.current_step, :, 0]
+        current_prices = self.data[self.current_step, :, 3]
         
         # Execute trades and calculate reward
         reward, transaction_costs, taxes = self._execute_trade(
