@@ -84,11 +84,11 @@ class ReplayBuffer:
         states, chaotic_features, actions, rewards, next_states, next_chaotic_features, dones = zip(*batch)
         return (
             torch.tensor(np.array(states), dtype=torch.float32),
-            torch.tensor(np.array(chaotic_features), dtype=torch.float32),
+            torch.tensor(np.stack(chaotic_features).astype(np.float32), dtype=torch.float32),
             torch.tensor(np.array(actions), dtype=torch.float32),
             torch.tensor(np.array(rewards), dtype=torch.float32).unsqueeze(1),
             torch.tensor(np.array(next_states), dtype=torch.float32),
-            torch.tensor(np.array(next_chaotic_features), dtype=torch.float32),
+            torch.tensor(np.stack(next_chaotic_features).astype(np.float32), dtype=torch.float32),
             torch.tensor(np.array(dones), dtype=torch.float32).unsqueeze(1),
         )
 

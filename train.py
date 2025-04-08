@@ -7,13 +7,13 @@ from TD3 import TD3
 from OptiPhaseSpace import ChaoticFeatureExtractor
 from kalmanfilter import apply_kalman_filter
 
-data = np.load("data/full_data.npy")
+data = np.load("data/train_processed_data.npy")
 
 # Training configuration
 
 num_stocks = data.shape[1]
 initial_cash = 100_000
-num_episodes = 1000
+num_episodes = 1100
 max_steps = data.shape[0]
 batch_size = 64
 discount = 0.99
@@ -71,6 +71,10 @@ for episode in range(num_episodes):
         portfolio_state = state[num_stocks * lookback_window * (data.shape[-1]):] # Extract portfolio state
 
         chaotic_features_sequence = all_chaotic_features[:, step:step + lookback_window, :].reshape(lookback_window, -1) # Get sequence of chaotic features
+
+        if chaotic_features_sequence.dtype == np.dtype('O'):
+            # print("Converting object array to float32...")
+            chaotic_features_sequence = np.array(chaotic_features_sequence, dtype=np.float32)
 
         action = agent.select_action(
             state=current_state_sequence, # Pass the sequence
