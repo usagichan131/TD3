@@ -1,0 +1,10 @@
+{
+  "hidden_size": 1024,
+  "num_layers": 3,
+  "batch_size": 32,
+  "discount": 0.97,
+  "tau": 0.00019135880487692312,
+  "exploration_phase": 86,
+  "observation_covariance": 0.13386261584543913,
+  "transition_covariance": 0.19229567074543377
+}

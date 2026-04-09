@@ -1,0 +1,17 @@
+{
+  "study_name": "TD3_optimization_20250820_155652",
+  "best_value": 7773.578500791308,
+  "best_params": {
+    "hidden_size": 64,
+    "num_layers": 3,
+    "batch_size": 64,
+    "discount": 0.97,
+    "tau": 0.000878252425575014,
+    "exploration_phase": 35,
+    "observation_covariance": 2.4089699053882043,
+    "transition_covariance": 0.01261823407855601
+  },
+  "n_trials": 50,
+  "timestamp": "2025-08-25T01:36:13.370709",
+  "stock": 7
+}

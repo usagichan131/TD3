@@ -1,0 +1,20 @@
+{
+  "study_name": "TD3_optimization_20250819_092406",
+  "best_value": 1727.2060114681162,
+  "best_params": {
+    "hidden_size": 128,
+    "num_layers": 4,
+    "batch_size": 128,
+    "discount": 0.96,
+    "tau": 0.0004589824181495653,
+    "exploration_phase": 23,
+    "num_episodes": 80,
+    "actor_lr": 4.4706085467784903e-05,
+    "critic_lr": 0.0002878805718308924,
+    "policy_noise": 0.2275114942710426,
+    "noise_clip": 0.6548850970305305,
+    "policy_freq": 2
+  },
+  "n_trials": 5,
+  "timestamp": "2025-08-19T12:21:24.266332"
+}

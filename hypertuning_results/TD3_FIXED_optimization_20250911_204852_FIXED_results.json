@@ -1,0 +1,30 @@
+{
+  "study_name": "TD3_FIXED_optimization_20250911_204852",
+  "best_validation_performance": -2.697593036556883,
+  "best_params": {
+    "hidden_size": 1024,
+    "num_layers": 3,
+    "batch_size": 32,
+    "discount": 0.97,
+    "tau": 0.00019135880487692312,
+    "exploration_phase": 86,
+    "observation_covariance": 0.13386261584543913,
+    "transition_covariance": 0.19229567074543377
+  },
+  "n_trials": 5,
+  "successful_trials": 5,
+  "failed_trials": 0,
+  "pruned_trials": 0,
+  "train_data_shape": [
+    1056,
+    5,
+    15
+  ],
+  "val_data_shape": [
+    352,
+    5,
+    15
+  ],
+  "timestamp": "2025-09-11T23:07:37.161088",
+  "note": "FIXED VERSION - Uses proper train/val split, optimizes validation performance"
+}

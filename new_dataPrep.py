@@ -12,7 +12,7 @@ def fetch_data(tickers, start_date, end_date, delay=5):
     for t in tickers:
         print(f"Fetching {t}...")
         ticker_data[t] = yf.Ticker(t).history(start=start_date, end=end_date)
-        time.sleep(delay)  # Avoid API rate limits
+        time.sleep(delay)
     
     return ticker_data
 
@@ -39,59 +39,80 @@ def clean_and_save_data(ticker_data, data_dir="data"):
     
     for ticker in ticker_data:
         print(f"{ticker}: {ticker_data[ticker].shape}")
-        # Drop unwanted columns
         ticker_data[ticker] = ticker_data[ticker].drop(['Dividends', 'Stock Splits'], axis=1)
-        # Save to CSV
         ticker_data[ticker].to_csv(f"{data_dir}/{ticker}.csv")
     
     return ticker_data
 
 def align_and_combine_data(ticker_data, save_path=None):
     """Align data across all tickers and combine into a single array"""
-    # Find common dates across all tickers
     all_indices = set().union(*[ticker_data[d].index for d in ticker_data])
     
-    # Align all data
     aligned_data = []
     for ticker in ticker_data:
         aligned_data.append(ticker_data[ticker].reindex(index=all_indices))
     
-    # Stack data into 3D array (timesteps, stocks, features)
     combined_data = np.stack(aligned_data, axis=1)
-    
-    # Replace NaN values with 0
     filled_data = np.nan_to_num(combined_data, nan=0)
     
-    # Save data if path is provided
     if save_path:
         np.save(save_path, filled_data)
     
     return filled_data
 
-def main():
-    # Define tickers
-    # tickers = ['AAPL', 'MA', 'CSCO', 'MSFT', 'AMZN', 'GOOG', 'IBM']
-    tickers = ['FSLR','ENPH','SEDG','CSIQ']
+def split_time_series_data(data, train_ratio=0.6, val_ratio=0.2, test_ratio=0.2):
+    """
+    Split time series data maintaining temporal order
+    """
+    total_len = len(data)
+    train_end = int(total_len * train_ratio)
+    val_end = int(total_len * (train_ratio + val_ratio))
     
-    # Create data directory
+    train_data = data[:train_end]
+    val_data = data[train_end:val_end]
+    test_data = data[val_end:]
+    
+    return train_data, val_data, test_data
+
+def main():
+    """
+    CORRECTED: Fetch ALL data at once, then split properly
+    """
+    tickers = ['META', 'AAPL', 'AMZN', 'NFLX', 'GOOGL']
     data_dir = "data"
     os.makedirs(data_dir, exist_ok=True)
     
-    # Process training data
-    print("Processing training data...")
-    ticker_data = fetch_data(tickers, "2018-01-01", "2024-01-01")
+    # Fetch ALL data from 2018 to 2025 at once
+    print("Fetching complete dataset (2018-2025)...")
+    ticker_data = fetch_data(tickers, "2018-01-01", "2025-01-01")
     ticker_data = add_technical_indicators(ticker_data)
     ticker_data = clean_and_save_data(ticker_data, data_dir)
-    train_data = align_and_combine_data(ticker_data, f"{data_dir}/train_processed_data2.npy")
-    print(f"Training data shape: {train_data.shape}")
     
-    # Process test data
-    print("Processing test data...")
-    ticker_data_test = fetch_data(tickers, "2024-01-01", "2025-01-01")
-    ticker_data_test = add_technical_indicators(ticker_data_test)
-    ticker_data_test = clean_and_save_data(ticker_data_test, data_dir)
-    test_data = align_and_combine_data(ticker_data_test, f"{data_dir}/test_processed_data2.npy")
-    print(f"Test data shape: {test_data.shape}")
+    # Combine into single array
+    complete_data = align_and_combine_data(ticker_data, f"{data_dir}/complete_processed_data.npy")
+    print(f"Complete data shape: {complete_data.shape}")
+    
+    # PROPER TEMPORAL SPLIT
+    train_data, val_data, test_data = split_time_series_data(
+        complete_data, 
+        train_ratio=0.6,  # 60% for training (2018-2022)
+        val_ratio=0.2,    # 20% for validation (2022-2024)
+        test_ratio=0.2    # 20% for testing (2024-2025)
+    )
+    
+    # Save splits
+    np.save(f"{data_dir}/train_data.npy", train_data)
+    np.save(f"{data_dir}/val_data.npy", val_data)
+    np.save(f"{data_dir}/test_data.npy", test_data)
+    
+    print("DATA SPLIT SUMMARY:")
+    print("=" * 50)
+    print(f"Complete dataset: {complete_data.shape}")
+    print(f"Training data: {train_data.shape} (60%)")
+    print(f"Validation data: {val_data.shape} (20%)")
+    print(f"Test data: {test_data.shape} (20%)")
+    print("=" * 50)
+    print("CRITICAL: Never use validation or test data during hyperparameter tuning!")
 
 if __name__ == "__main__":
     main()
