@@ -8,7 +8,8 @@ from OptiPhaseSpace import ChaoticFeatureExtractor
 from kalmanfilter import apply_kalman_filter
 
 # Load the processed test data
-data = np.load("/home/trhang/Documents/TD3/data/test_processed_data2.npy")
+data = np.load("/home/trhang/Documents/TD3/data/test_data.npy")
+
 
 # Test configuration - matching training parameters
 num_stocks = data.shape[1]
@@ -18,11 +19,11 @@ max_steps = data.shape[0]
 
 # Chaotic Feature Extractor setup - same as training
 chaotic_extractor = ChaoticFeatureExtractor()
+data = apply_kalman_filter(data, observation_covariance=2.3327797486414723, transition_covariance=0.013047010546831547)
 all_chaotic_features = chaotic_extractor.extract_features(data)
 chaotic_feature_dim = chaotic_extractor.output_dim * num_stocks
 
 # Kalman filter setup - same parameters as training
-data = apply_kalman_filter(data, observation_covariance=2.3327797486414723, transition_covariance=0.013047010546831547)
 
 # Environment setup - same as training
 test_env = StockEnv(num_stocks=num_stocks, data=data, initial_cash=initial_cash)
@@ -35,7 +36,7 @@ def load_agent_safely():
     loading_attempts = [
         # Method 1: Load full agent (original)
         {
-            'paths': ['./model/td3_5.4stocks_params150947.pth', '/home/trhang/Documents/TD3/model/td3.pth'],
+            'paths': ['./model/best_final_optimized_20260407_131845.pth', '/home/trhang/Documents/TD3/model/best_final_optimized_20260407_131845.pth'],
             'method': 'full_agent'
         },
         # Method 2: Load from checkpoint
@@ -60,7 +61,6 @@ def load_agent_safely():
                     # Load from checkpoint
                     checkpoint = torch.load(path, weights_only=False, map_location='cpu')
                     config = checkpoint['model_config']
-                    
                     # Create new agent with saved config
                     agent = TD3(
                         state_dim=config['state_dim'],

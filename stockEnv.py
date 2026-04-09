@@ -72,9 +72,12 @@ class StockEnv(gym.Env):
 
 
         # Apply thresholds (Buy if > 0.5, Sell if < 0.5, Hold otherwise)
-        stock_selection = np.where(stock_selection > 0.5, 1, 0)  # Buy if > 0.5
-        stock_selection = np.where(stock_selection < 0.5, -1, stock_selection)  # Sell or hold if < 0.5
-
+        # stock_selection = np.where(stock_selection > 0.5, 1, 0)  # Buy if > 0.5
+        # stock_selection = np.where(stock_selection < 0.5, -1, stock_selection)  # Sell or hold if < 0.5
+        stock_selection_buy  = (action[:self.num_stocks] > 0.6).astype(int)   # Buy
+        stock_selection_sell = (action[:self.num_stocks] < 0.4).astype(int)   # Sell
+        # 0.4 - 0.6: Hold
+        stock_selection = stock_selection_buy - stock_selection_sell  # {-1, 0, 1}
         # print(f"Processed stock selection (1=Buy, -1=Sell or Hold): {stock_selection}")
         
         # Get current prices
@@ -96,13 +99,19 @@ class StockEnv(gym.Env):
         consecutive_losses = self._count_consecutive_losses()  # New function
 
         # Define termination conditions
-        bad_performance = (
-            self.portfolio_value < self.initial_cash * 0.6 or  # Portfolio down 30%
-            consecutive_losses >= 6 or  # 5 consecutive losing steps
-            drawdown > 0.5  # More than 50% max drawdown 
-            or reward < -3
-        )
+        # bad_performance = (
+        #     self.portfolio_value < self.initial_cash * 0.6 or  # Portfolio down 30%
+        #     consecutive_losses >= 6 or  # 5 consecutive losing steps
+        #     drawdown > 0.5  # More than 50% max drawdown 
+        #     or reward < -3
+        # )
 
+        # ✅ FIX: Nới lỏng điều kiện, để agent học từ sai lầm
+        bad_performance = (
+            self.portfolio_value < self.initial_cash * 0.4 or  # Giảm 60% mới dừng
+            drawdown > 0.7                                      # 70% drawdown mới dừng
+            # Xóa consecutive_losses và reward < -3
+        )
         done = self.current_step >= len(self.data) - 1 or self.portfolio_value <= 0 or bad_performance
         
         # Get next observation
@@ -198,33 +207,51 @@ class StockEnv(gym.Env):
         if old_portfolio_value <= 0:
             portfolio_imme_return = 0.0
         else:
-            portfolio_imme_return = ((new_portfolio_value - old_portfolio_value) / old_portfolio_value) * 100
+            portfolio_imme_return = (new_portfolio_value - old_portfolio_value) / old_portfolio_value
 
-        if self.initial_cash <= 0:
-            cummu_return = 0.0
-        else:
-            cummu_return = ((new_portfolio_value - self.initial_cash) / self.initial_cash) * 100
+        cost_ratio = (transaction_costs + taxes) / max(new_portfolio_value, 1e-8)
 
-        # FIXED: cost penalty 
-        if new_portfolio_value <= 0:
-            cost_penalty = 0.0
-        else:
-            cost_penalty = ((transaction_costs + taxes) / new_portfolio_value) * 100
-
-
-        # Portfolio return
-        
-        # Final reward
-        reward = self.reward_weight_1 * cummu_return + self.reward_weight_2 * portfolio_imme_return - self.penalty_weight*(cost_penalty) #- opportunity_cost
-        # reward /= 1000 # Normalize reward (%)
+        # Scale nhỏ, rõ ràng, không double-count
+        reward = portfolio_imme_return - cost_ratio
+        # Safety check
         if np.isnan(reward) or np.isinf(reward):
-            print(f"Warning: Invalid reward detected! Setting to 0.")
-            print(f"  cummu_return: {cummu_return}, portfolio_imme_return: {portfolio_imme_return}")
-            print(f"  cost_penalty: {cost_penalty}, new_portfolio_value: {new_portfolio_value}")
+            print(f"Warning: Invalid reward! imme_return={portfolio_imme_return:.6f}, "
+                  f"cost_ratio={cost_ratio:.6f}")
             reward = 0.0
+        # Clip về range hợp lý, tránh outlier
+        # reward = np.clip(reward, -0.1, 0.1)
 
-        # Update portfolio value
-        self.portfolio_value = new_portfolio_value
+        self.portfolio_value = max(new_portfolio_value, 0.0)  # Update portfolio value, không để âm
+        # if old_portfolio_value <= 0:
+        #     portfolio_imme_return = 0.0
+        # else:
+        #     portfolio_imme_return = ((new_portfolio_value - old_portfolio_value) / old_portfolio_value) * 100
+
+        # if self.initial_cash <= 0:
+        #     cummu_return = 0.0
+        # else:
+        #     cummu_return = ((new_portfolio_value - self.initial_cash) / self.initial_cash) * 100
+
+        # # FIXED: cost penalty 
+        # if new_portfolio_value <= 0:
+        #     cost_penalty = 0.0
+        # else:
+        #     cost_penalty = ((transaction_costs + taxes) / new_portfolio_value) * 100
+
+
+        # # Portfolio return
+        
+        # # Final reward
+        # reward = self.reward_weight_1 * cummu_return + self.reward_weight_2 * portfolio_imme_return - self.penalty_weight*(cost_penalty) #- opportunity_cost
+        # # reward /= 1000 # Normalize reward (%)
+        # if np.isnan(reward) or np.isinf(reward):
+        #     print(f"Warning: Invalid reward detected! Setting to 0.")
+        #     print(f"  cummu_return: {cummu_return}, portfolio_imme_return: {portfolio_imme_return}")
+        #     print(f"  cost_penalty: {cost_penalty}, new_portfolio_value: {new_portfolio_value}")
+        #     reward = 0.0
+
+        # # Update portfolio value
+        # self.portfolio_value = new_portfolio_value
         
         return reward, transaction_costs, taxes #, opportunity_cost
 
