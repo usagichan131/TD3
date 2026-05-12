@@ -1,0 +1,17 @@
+{
+  "run_id": "20260418_204854_",
+  "saved_at": "2026-04-19T16:52:02.407014",
+  "best_trial": 1,
+  "best_value": 4.212070031786538,
+  "best_params": {
+    "hidden_size": 512,
+    "num_layers": 2,
+    "batch_size": 128,
+    "discount": 0.97,
+    "tau": 0.0019342146614798768,
+    "exploration_phase": 140,
+    "observation_covariance": 1.8353655471234984,
+    "transition_covariance": 0.04793598849015878
+  },
+  "n_trials_done": 6
+}

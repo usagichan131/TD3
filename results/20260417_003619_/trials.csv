@@ -1,0 +1,2 @@
+trial_number,datetime,reward,final_value,profit,return_pct,state,hidden_size,num_layers,batch_size,discount,tau,exploration_phase,observation_covariance,transition_covariance
+0,2026-04-17 05:11:32,2.262,145253.87,45253.87,45.2539,COMPLETE,512,1,128,0.99,0.0006102986061381585,280,0.9286131344630378,0.405303013216497
